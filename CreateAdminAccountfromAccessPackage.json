@@ -1,0 +1,529 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Create_Admin_Account": {
+                "inputs": {
+                    "authentication": {
+                        "audience": "@variables('Audience')",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "body": {
+                        "accountEnabled": true,
+                        "country": "USA",
+                        "displayName": "admin-@{body('Parse_JSON_from_work_account')?['userPrincipalName']}",
+                        "employeeHireDate": "@{body('Parse_JSON_from_work_account')?['employeeHireDate']}",
+                        "employeeID": "@{body('Parse_JSON_from_work_account')?['employeeId']}",
+                        "jobtitle": "AdminAccount",
+                        "mail": "adm.@{body('Parse_JSON_from_work_account')?['mail']}",
+                        "mailNickname": "adm.@{body('Parse_JSON_from_work_account')?['givenName']}.@{body('Parse_JSON_from_work_account')?['surname']}",
+                        "passwordPolicies": "DisablePasswordExpiration",
+                        "passwordProfile": {
+                            "forceChangePasswordNextSignIn": false,
+                            "password": "SuperSecretP@ssword!"
+                        },
+                        "preferredLanguage": "en-US",
+                        "usageLocation": "US",
+                        "userPrincipalName": "adm.@{body('Parse_JSON_from_work_account')?['givenName']}.@{body('Parse_JSON_from_work_account')?['surname']}@atlpfe.com"
+                    },
+                    "method": "POST",
+                    "uri": "https://graph.microsoft.com/beta/users/"
+                },
+                "runAfter": {
+                    "Parse_JSON_from_work_account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http"
+            },
+            "Get_user_details_from_work_account_": {
+                "inputs": {
+                    "authentication": {
+                        "audience": "@variables('Audience')",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "method": "GET",
+                    "uri": "https://graph.microsoft.com/beta/users/@{triggerBody()?['Assignment']?['Target']?['ObjectId']}"
+                },
+                "runAfter": {
+                    "Initialize_variable_-_Audience": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http"
+            },
+            "Initialize_variable_-_Audience": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "Audience",
+                            "type": "string",
+                            "value": "https://graph.microsoft.com"
+                        }
+                    ]
+                },
+                "runAfter": {},
+                "type": "InitializeVariable"
+            },
+            "Link_Admin_Account_to_standard_account_(CSA)": {
+                "inputs": {
+                    "authentication": {
+                        "audience": "@variables('Audience')",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "body": {
+                        "customSecurityAttributes": {
+                            "WorkAccounts": {
+                                "@@odata.type": "#Microsoft.DirectoryServices.CustomSecurityAttributeValue",
+                                "AdminAccountID": [
+                                    "@{body('Parse_JSON_from_Admin_Account')?['id']}"
+                                ],
+                                "AdminAccountID@odata.type": "#Collection(String)"
+                            }
+                        }
+                    },
+                    "headers": {
+                        "content-type": "application/json"
+                    },
+                    "method": "PATCH",
+                    "uri": "https://graph.microsoft.com/beta/users/@{body('Parse_JSON_from_work_account')?['id']}"
+                },
+                "runAfter": {
+                    "Parse_JSON_from_Admin_Account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http"
+            },
+            "Link_Standard_Account_to_Admin_Account_(CSA)": {
+                "inputs": {
+                    "authentication": {
+                        "audience": "@variables('Audience')",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "body": {
+                        "customSecurityAttributes": {
+                            "AdminAccounts": {
+                                "@@odata.type": "#Microsoft.DirectoryServices.CustomSecurityAttributeValue",
+                                "WorkAccountID": "@{body('Parse_JSON_from_work_account')?['id']}"
+                            }
+                        }
+                    },
+                    "headers": {
+                        "content-type": "application/json"
+                    },
+                    "method": "PATCH",
+                    "uri": "https://graph.microsoft.com/beta/users/@{body('Parse_JSON_from_Admin_Account')?['id']}"
+                },
+                "runAfter": {
+                    "Link_Admin_Account_to_standard_account_(CSA)": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http"
+            },
+            "Parse_JSON_from_Admin_Account": {
+                "inputs": {
+                    "content": "@body('Create_Admin_Account')",
+                    "schema": {
+                        "properties": {
+                            "@@odata.context": {
+                                "type": "string"
+                            },
+                            "accountEnabled": {
+                                "type": "boolean"
+                            },
+                            "ageGroup": {},
+                            "assignedLicenses": {
+                                "type": "array"
+                            },
+                            "assignedPlans": {
+                                "type": "array"
+                            },
+                            "authorizationInfo": {
+                                "properties": {
+                                    "certificateUserIds": {
+                                        "type": "array"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "businessPhones": {
+                                "type": "array"
+                            },
+                            "city": {},
+                            "companyName": {},
+                            "consentProvidedForMinor": {},
+                            "country": {
+                                "type": "string"
+                            },
+                            "createdDateTime": {
+                                "type": "string"
+                            },
+                            "creationType": {},
+                            "deletedDateTime": {},
+                            "department": {},
+                            "deviceKeys": {
+                                "type": "array"
+                            },
+                            "displayName": {
+                                "type": "string"
+                            },
+                            "employeeHireDate": {},
+                            "employeeId": {},
+                            "employeeLeaveDateTime": {},
+                            "employeeOrgData": {},
+                            "employeeType": {},
+                            "externalUserConvertedOn": {},
+                            "externalUserState": {},
+                            "externalUserStateChangeDateTime": {},
+                            "faxNumber": {},
+                            "givenName": {},
+                            "id": {
+                                "type": "string"
+                            },
+                            "identities": {
+                                "items": {
+                                    "properties": {
+                                        "issuer": {
+                                            "type": "string"
+                                        },
+                                        "issuerAssignedId": {
+                                            "type": "string"
+                                        },
+                                        "signInType": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "signInType",
+                                        "issuer",
+                                        "issuerAssignedId"
+                                    ],
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            "imAddresses": {
+                                "type": "array"
+                            },
+                            "infoCatalogs": {
+                                "type": "array"
+                            },
+                            "isManagementRestricted": {},
+                            "isResourceAccount": {},
+                            "jobTitle": {},
+                            "legalAgeGroupClassification": {},
+                            "mail": {},
+                            "mailNickname": {
+                                "type": "string"
+                            },
+                            "mobilePhone": {},
+                            "officeLocation": {},
+                            "onPremisesDistinguishedName": {},
+                            "onPremisesDomainName": {},
+                            "onPremisesExtensionAttributes": {
+                                "properties": {
+                                    "extensionAttribute1": {},
+                                    "extensionAttribute10": {},
+                                    "extensionAttribute11": {},
+                                    "extensionAttribute12": {},
+                                    "extensionAttribute13": {},
+                                    "extensionAttribute14": {},
+                                    "extensionAttribute15": {},
+                                    "extensionAttribute2": {},
+                                    "extensionAttribute3": {},
+                                    "extensionAttribute4": {},
+                                    "extensionAttribute5": {},
+                                    "extensionAttribute6": {},
+                                    "extensionAttribute7": {},
+                                    "extensionAttribute8": {},
+                                    "extensionAttribute9": {}
+                                },
+                                "type": "object"
+                            },
+                            "onPremisesImmutableId": {},
+                            "onPremisesLastSyncDateTime": {},
+                            "onPremisesProvisioningErrors": {
+                                "type": "array"
+                            },
+                            "onPremisesSamAccountName": {},
+                            "onPremisesSecurityIdentifier": {},
+                            "onPremisesSyncEnabled": {},
+                            "onPremisesUserPrincipalName": {},
+                            "otherMails": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "passwordPolicies": {
+                                "type": "string"
+                            },
+                            "passwordProfile": {},
+                            "postalCode": {},
+                            "preferredDataLocation": {},
+                            "preferredLanguage": {
+                                "type": "string"
+                            },
+                            "provisionedPlans": {
+                                "type": "array"
+                            },
+                            "proxyAddresses": {
+                                "type": "array"
+                            },
+                            "refreshTokensValidFromDateTime": {
+                                "type": "string"
+                            },
+                            "securityIdentifier": {
+                                "type": "string"
+                            },
+                            "showInAddressList": {},
+                            "signInSessionsValidFromDateTime": {
+                                "type": "string"
+                            },
+                            "state": {},
+                            "streetAddress": {},
+                            "surname": {},
+                            "usageLocation": {
+                                "type": "string"
+                            },
+                            "userPrincipalName": {
+                                "type": "string"
+                            },
+                            "userType": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "runAfter": {
+                    "Create_Admin_Account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson"
+            },
+            "Parse_JSON_from_work_account": {
+                "inputs": {
+                    "content": "@body('Get_user_details_from_work_account_')",
+                    "schema": {
+                        "properties": {
+                            "@@odata.context": {
+                                "type": "string"
+                            },
+                            "businessPhones": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "department": {
+                                "type": "string"
+                            },
+                            "displayName": {
+                                "type": "string"
+                            },
+                            "employeeHireDate": {},
+                            "employeeId": {
+                                "type": "string"
+                            },
+                            "givenName": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "jobTitle": {
+                                "type": "string"
+                            },
+                            "mail": {
+                                "type": "string"
+                            },
+                            "preferredLanguage": {},
+                            "surname": {
+                                "type": "string"
+                            },
+                            "userPrincipalName": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "runAfter": {
+                    "Get_user_details_from_work_account_": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {},
+        "triggers": {
+            "manual": {
+                "inputs": {
+                    "schema": {
+                        "properties": {
+                            "AccessPackage": {
+                                "properties": {
+                                    "Description": {
+                                        "description": "AccessPackage-Description",
+                                        "type": "string"
+                                    },
+                                    "DisplayName": {
+                                        "description": "AccessPackage-DisplayName",
+                                        "type": "string"
+                                    },
+                                    "Id": {
+                                        "description": "AccessPackage-Id",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "AccessPackageAssignmentRequestId": {
+                                "type": "string"
+                            },
+                            "AccessPackageCatalog": {
+                                "properties": {
+                                    "Description": {
+                                        "description": "AccessPackageCatalog-Description",
+                                        "type": "string"
+                                    },
+                                    "DisplayName": {
+                                        "description": "AccessPackageCatalog-DisplayName",
+                                        "type": "string"
+                                    },
+                                    "Id": {
+                                        "description": "AccessPackageCatalog-Id",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "Answers": {
+                                "type": "array"
+                            },
+                            "Assignment": {
+                                "properties": {
+                                    "AssignmentPolicy": {
+                                        "properties": {
+                                            "DisplayName": {
+                                                "description": "AssignmentPolicy-DisplayName",
+                                                "type": "string"
+                                            },
+                                            "Id": {
+                                                "description": "AssignmentPolicy-Id",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "Id": {
+                                        "description": "Assignment-Id",
+                                        "type": "string"
+                                    },
+                                    "State": {
+                                        "description": "Assignment-State",
+                                        "type": "string"
+                                    },
+                                    "Status": {
+                                        "description": "Assignment-Status",
+                                        "type": "string"
+                                    },
+                                    "Target": {
+                                        "properties": {
+                                            "ConnectedOrganization": {
+                                                "properties": {
+                                                    "Description": {
+                                                        "description": "Assignment-Target-ConnectedOrganization-Description",
+                                                        "type": "string"
+                                                    },
+                                                    "DisplayName": {
+                                                        "description": "Assignment-Target-ConnectedOrganization-DisplayName",
+                                                        "type": "string"
+                                                    },
+                                                    "Id": {
+                                                        "description": "Assignment-Target-ConnectedOrganization-Id",
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            },
+                                            "DisplayName": {
+                                                "description": "Assignment-Target-DisplayName",
+                                                "type": "string"
+                                            },
+                                            "Id": {
+                                                "description": "Assignment-Target-Id",
+                                                "type": "string"
+                                            },
+                                            "ObjectId": {
+                                                "description": "Assignment-Target-ObjectId",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "CallbackConfiguration": {
+                                "properties": {
+                                    "DurationBeforeTimeout": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "CallbackUriPath": {
+                                "type": "string"
+                            },
+                            "CustomExtensionStageInstanceId": {
+                                "type": "string"
+                            },
+                            "RequestType": {
+                                "type": "string"
+                            },
+                            "Requestor": {
+                                "properties": {
+                                    "DisplayName": {
+                                        "description": "Requestor-DisplayName",
+                                        "type": "string"
+                                    },
+                                    "Id": {
+                                        "description": "Requestor-Id",
+                                        "type": "string"
+                                    },
+                                    "ObjectId": {
+                                        "description": "Requestor-ObjectId",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "Stage": {
+                                "type": "string"
+                            },
+                            "State": {
+                                "type": "string"
+                            },
+                            "Status": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "kind": "Http",
+                "operationOptions": "IncludeAuthorizationHeadersInOutputs",
+                "type": "Request"
+            }
+        }
+    },
+    "parameters": {}
+}
