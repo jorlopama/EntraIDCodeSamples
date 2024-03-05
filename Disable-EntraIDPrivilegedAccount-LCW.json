@@ -1,0 +1,336 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "For_each": {
+                "actions": {
+                    "Disable_Admin_Account": {
+                        "inputs": {
+                            "authentication": {
+                                "audience": "@variables('Audience')",
+                                "type": "ManagedServiceIdentity"
+                            },
+                            "body": {
+                                "accountEnabled": false
+                            },
+                            "method": "PATCH",
+                            "uri": "https://graph.microsoft.com/beta/users/@{items('For_each')}"
+                        },
+                        "runAfter": {},
+                        "type": "Http"
+                    }
+                },
+                "foreach": "@variables('AdminAccountVariable')",
+                "runAfter": {
+                    "Initialize_variable_for_Admin_Account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Foreach"
+            },
+            "Get_CSA_for_associated_admin_account": {
+                "inputs": {
+                    "authentication": {
+                        "audience": "@variables('Audience')",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "method": "GET",
+                    "uri": "https://graph.microsoft.com/beta/users/@{triggerBody()?['data']?['subject']?['id']}?$select=id,displayName,customSecurityAttributes"
+                },
+                "runAfter": {
+                    "Parse_JSON_of_Work_Account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http"
+            },
+            "Get_User_Details_from_Work_Account": {
+                "inputs": {
+                    "authentication": {
+                        "audience": "@variables('Audience')",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "method": "GET",
+                    "uri": "https://graph.microsoft.com/beta/users/@{triggerBody()?['data']?['subject']?['id']}"
+                },
+                "runAfter": {
+                    "Initialize_CSA_name": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http"
+            },
+            "Initialize_CSA_name": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "AttributeName",
+                            "type": "string",
+                            "value": "WorkAccountID"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_variable_for_Audience": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_variable_for_Admin_Account": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "AdminAccountVariable",
+                            "type": "array",
+                            "value": "@body('Parse_CSA_of_work_account')?['customSecurityAttributes']?['WorkAccounts']?['AdminAccountID']"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Parse_CSA_of_work_account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_variable_for_Audience": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "Audience",
+                            "type": "string",
+                            "value": "https://graph.microsoft.com"
+                        }
+                    ]
+                },
+                "runAfter": {},
+                "type": "InitializeVariable"
+            },
+            "Parse_CSA_of_work_account": {
+                "inputs": {
+                    "content": "@body('Get_CSA_for_associated_admin_account')",
+                    "schema": {
+                        "properties": {
+                            "customSecurityAttributes": {
+                                "properties": {
+                                    "WorkAccounts": {
+                                        "properties": {
+                                            "@@odata.type": {
+                                                "type": "string"
+                                            },
+                                            "AdminAccountID": {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            "AdminAccountID@odata.type": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "runAfter": {
+                    "Get_CSA_for_associated_admin_account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson"
+            },
+            "Parse_JSON_of_Work_Account": {
+                "inputs": {
+                    "content": "@body('Get_User_Details_from_Work_Account')",
+                    "schema": {
+                        "properties": {
+                            "@@odata.context": {
+                                "type": "string"
+                            },
+                            "businessPhones": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "department": {
+                                "type": "string"
+                            },
+                            "displayName": {
+                                "type": "string"
+                            },
+                            "employeeHireDate": {},
+                            "employeeId": {
+                                "type": "string"
+                            },
+                            "givenName": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "jobTitle": {
+                                "type": "string"
+                            },
+                            "mail": {
+                                "type": "string"
+                            },
+                            "preferredLanguage": {},
+                            "surname": {
+                                "type": "string"
+                            },
+                            "userPrincipalName": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "runAfter": {
+                    "Get_User_Details_from_Work_Account": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {},
+        "triggers": {
+            "manual": {
+                "inputs": {
+                    "schema": {
+                        "properties": {
+                            "data": {
+                                "properties": {
+                                    "callbackUriPath": {
+                                        "description": "CallbackUriPath used for Resume Action",
+                                        "title": "Data.CallbackUriPath",
+                                        "type": "string"
+                                    },
+                                    "subject": {
+                                        "properties": {
+                                            "displayName": {
+                                                "description": "DisplayName of the Subject",
+                                                "title": "Subject.DisplayName",
+                                                "type": "string"
+                                            },
+                                            "email": {
+                                                "description": "Email of the Subject",
+                                                "title": "Subject.Email",
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "description": "Id of the Subject",
+                                                "title": "Subject.Id",
+                                                "type": "string"
+                                            },
+                                            "manager": {
+                                                "properties": {
+                                                    "displayName": {
+                                                        "description": "DisplayName parameter for Manager",
+                                                        "title": "Manager.DisplayName",
+                                                        "type": "string"
+                                                    },
+                                                    "email": {
+                                                        "description": "Mail parameter for Manager",
+                                                        "title": "Manager.Mail",
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "description": "Id parameter for Manager",
+                                                        "title": "Manager.Id",
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            },
+                                            "userPrincipalName": {
+                                                "description": "UserPrincipalName of the Subject",
+                                                "title": "Subject.UserPrincipalName",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "task": {
+                                        "properties": {
+                                            "displayName": {
+                                                "description": "DisplayName for Task Object",
+                                                "title": "Task.DisplayName",
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "description": "Id for Task Object",
+                                                "title": "Task.Id",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "taskProcessingResult": {
+                                        "properties": {
+                                            "createdDateTime": {
+                                                "description": "CreatedDateTime for TaskProcessingResult Object",
+                                                "title": "TaskProcessingResult.CreatedDateTime",
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "description": "Id for TaskProcessingResult Object",
+                                                "title": "TaskProcessingResult.Id",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "workflow": {
+                                        "properties": {
+                                            "displayName": {
+                                                "description": "DisplayName for Workflow Object",
+                                                "title": "Workflow.DisplayName",
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "description": "Id for Workflow Object",
+                                                "title": "Workflow.Id",
+                                                "type": "string"
+                                            },
+                                            "workflowVerson": {
+                                                "description": "WorkflowVersion for Workflow Object",
+                                                "title": "Workflow.WorkflowVersion",
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "source": {
+                                "description": "Context in which an event happened",
+                                "title": "Request.Source",
+                                "type": "string"
+                            },
+                            "type": {
+                                "description": "Value describing the type of event related to the originating occurrence.",
+                                "title": "Request.Type",
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "kind": "Http",
+                "type": "Request"
+            }
+        }
+    },
+    "parameters": {}
+}
